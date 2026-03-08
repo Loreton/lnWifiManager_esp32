@@ -9,7 +9,7 @@
 #include "lnLogger_Class.h"
 
 #include "lnWiFiManager.h"
-
+const char* logPrefix="WiFi: ";
 
 lnWiFiManagerNB* lnWiFiManagerNB::s_instance = nullptr;
 
@@ -65,7 +65,7 @@ void lnWiFiManagerNB::update() {
     // Se non siamo connessi, verifichiamo il timeout totale (Punto D)
     if (status != WL_CONNECTED) {
         if (now - m_lastConnectedTime > m_maxWifiTimeout) {
-            lnLOG_WARNING("WiFi: Max timeout reached. Forcing new scan.");
+            lnLOG_WARNING("%sMax timeout reached. Forcing new scan.", logPrefix);
             m_lastConnectedTime = now;
             startScan();
             return;
@@ -103,7 +103,7 @@ void lnWiFiManagerNB::startScan() {
     // [Punto A] Avvia la scansione solo se non ce n'è una in corso
     if (WiFi.scanComplete() == -2) {
         // Serial.println("WiFi: Starting async scan...");
-        lnLOG_NOTIFY("WiFi: Starting async scan...");
+        lnLOG_NOTIFY("%sStarting async scan...", logPrefix);
         WiFi.scanNetworks(true);
         m_lastScanTime = millis(); // Aggiorna il timer qui
     }
@@ -134,6 +134,7 @@ void lnWiFiManagerNB::handleScanResult() {
         }
     }
 
+    lnLOG_DEBUG("%sbestIdx=%d", logPrefix, bestIdx);
     if (bestIdx == -1) return;
 
     if (WiFi.status() == WL_CONNECTED) {
@@ -158,12 +159,13 @@ void lnWiFiManagerNB::handleScanResult() {
 
         // Serial.printf("WiFi: Switching to better AP (%s) RSSI: %d (Gap: %d)\n",
         //               WiFi.SSID(bestIdx).c_str(), bestRSSI, bestRSSI - currentRSSI);
-        lnLOG_INFO("WiFi: Switching to better AP (%s) RSSI: %d (Gap: %d)",
+        lnLOG_INFO("%sSwitching to better AP (%s) RSSI: %d (Gap: %d)", logPrefix,
                       WiFi.SSID(bestIdx).c_str(), bestRSSI, bestRSSI - currentRSSI);
     }
 
     // Aggiorna e connetti
     strncpy(m_currentSSID, WiFi.SSID(bestIdx).c_str(), MAX_SSID_LEN - 1);
+    lnLOG_INFO("%sTrying connection to: ...%s", logPrefix, m_currentSSID);
     WiFi.begin(m_currentSSID, bestPassword);
 }
 
@@ -190,14 +192,27 @@ void lnWiFiManagerNB::WiFiEventHandler(WiFiEvent_t event, WiFiEventInfo_t info) 
             default: break;
         }
 
-        // Serial.printf("WiFi Event: %s (%d)\n", eventName, (int)event);
-        lnLOG_NOTIFY("WiFi Event: %s (%d)", eventName, (int)event);
+        lnLOG_NOTIFY("%sEvent: %s (%d)", logPrefix, eventName, (int)event);
         if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
-            // Serial.print("WiFi: Got IP ");
-            // Serial.println(WiFi.localIP());
-            lnLOG_INFO("WiFi: Got IP %s", WiFi.localIP().toString().c_str());
+            // m_ipIsActive = true;
+            lnLOG_INFO("%sGot IP %s", logPrefix, WiFi.localIP().toString().c_str());
+            lnLOG_INFO("%sGW     %s", logPrefix, WiFi.gatewayIP().toString().c_str());
+            lnLOG_INFO("%sDNS    %s", logPrefix, WiFi.dnsIP().toString().c_str());
+            lnLOG_INFO("%sRSSI   %d", logPrefix, WiFi.RSSI());
         }
+
+        else if (event == ARDUINO_EVENT_WIFI_STA_CONNECTED) {
+            // m_ipIsActive = false;
+            lnLOG_DEBUG("%sIP   %s", logPrefix, WiFi.localIP().toString().c_str());
+            lnLOG_DEBUG("%sGW   %s", logPrefix, WiFi.gatewayIP().toString().c_str());
+            lnLOG_DEBUG("%sDNS  %s", logPrefix, WiFi.dnsIP().toString().c_str());
+            lnLOG_DEBUG("%sRSSI %d", logPrefix, WiFi.RSSI());
+        }
+
+        else if (event == ARDUINO_EVENT_WIFI_STA_LOST_IP) {
+            // m_ipIsActive = false;
     }
+}
 }
 
 
@@ -208,7 +223,7 @@ void lnWiFiManagerNB::printScanResults() {
     if (n < 0) return;
 
     // Serial.println("\n--- WiFi Scan Results ---");
-    lnLOG_DEBUG("--- WiFi Scan Results ---");
+    lnLOG_DEBUG("%s--- WiFi Scan Results ---", logPrefix);
     for (int i = 0; i < n; ++i) {
         bool isSaved = false;
         for (auto &cred : m_credentials) {
@@ -219,7 +234,7 @@ void lnWiFiManagerNB::printScanResults() {
         }
 
         // Serial.printf("%s %-20s RSSI: %d dBm %s\n",
-        lnLOG_DEBUG("%s %-20s RSSI: %d dBm %s",
+        lnLOG_DEBUG("%s%s %-20s RSSI: %d dBm %s", logPrefix,
             isSaved ? "[*]" : "[ ]",      // Asterisco se la rete è salvata
             WiFi.SSID(i).c_str(),
             WiFi.RSSI(i),
@@ -227,7 +242,7 @@ void lnWiFiManagerNB::printScanResults() {
         );
     }
     // Serial.println("--------------------------\n");
-    lnLOG_INFO("--------------------------");
+    lnLOG_INFO("%s--------------------------", logPrefix);
 }
 
 bool lnWiFiManagerNB::isConnected() { return WiFi.status() == WL_CONNECTED; }
