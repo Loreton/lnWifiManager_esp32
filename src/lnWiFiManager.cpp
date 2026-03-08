@@ -11,6 +11,9 @@
 #include "lnWiFiManager.h"
 const char* logPrefix="WiFi: ";
 
+
+ScanCallback scanCallback = nullptr;
+
 lnWiFiManagerNB* lnWiFiManagerNB::s_instance = nullptr;
 
 lnWiFiManagerNB::lnWiFiManagerNB() {
@@ -18,6 +21,9 @@ lnWiFiManagerNB::lnWiFiManagerNB() {
 }
 
 
+void lnWiFiManagerNB::setScanCallback(ScanCallback cb) {
+    scanCallback = cb;
+}
 
 // #######################################################################################################
 // # WiFi.persistent(false):
@@ -100,10 +106,13 @@ void lnWiFiManagerNB::update() {
 // # Il timer m_lastScanTime viene aggiornato solo quando la scansione viene effettivamente lanciata.
 // ##################################################################################################################
 void lnWiFiManagerNB::startScan() {
+
     // [Punto A] Avvia la scansione solo se non ce n'è una in corso
     if (WiFi.scanComplete() == -2) {
-        // Serial.println("WiFi: Starting async scan...");
+
         lnLOG_NOTIFY("%sStarting async scan...", logPrefix);
+        if (scanCallback)
+            scanCallback(true); // avvisa la CB che è partito lo scan
         WiFi.scanNetworks(true);
         m_lastScanTime = millis(); // Aggiorna il timer qui
     }
@@ -211,8 +220,15 @@ void lnWiFiManagerNB::WiFiEventHandler(WiFiEvent_t event, WiFiEventInfo_t info) 
 
         else if (event == ARDUINO_EVENT_WIFI_STA_LOST_IP) {
             // m_ipIsActive = false;
+        }
+
+        else if (event == ARDUINO_EVENT_WIFI_SCAN_DONE) {
+            lnLOG_DEBUG("%sscan completed", logPrefix);
+            if (scanCallback)
+                scanCallback(false);   // scan finito
+
+        }
     }
-}
 }
 
 

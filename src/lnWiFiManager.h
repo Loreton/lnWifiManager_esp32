@@ -17,6 +17,7 @@
     #define MAX_PASS_LENGTH 64
 // #endif
 
+typedef void (*ScanCallback)(bool scanning);
 
 
 
@@ -37,6 +38,7 @@ class lnWiFiManagerNB {
         bool isConnected();
         const char* getConnectedSSID();
         void printScanResults(); // Funzione di debug
+        void setScanCallback(ScanCallback cb);
 
     private:
         static lnWiFiManagerNB* s_instance;
@@ -56,8 +58,8 @@ class lnWiFiManagerNB {
         uint32_t m_lastConnectedTime = 0;
         uint32_t m_connectionStartTime = 0; // Ora la usiamo correttamente
 
-        int m_rssiGap;
-        char m_currentSSID[MAX_SSID_LENGTH] = {0};
+        int     m_rssiGap;
+        char    m_currentSSID[MAX_SSID_LENGTH] = {0};
         uint8_t m_currentBSSID[6] = {0}; // Per il roaming vero
 
         void startScan();
