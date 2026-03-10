@@ -1,6 +1,6 @@
 {
   "name": "wifiManager",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "description": "Custom wifiManager library for ESP32 projects.",
   "keywords": [
     "wifi",

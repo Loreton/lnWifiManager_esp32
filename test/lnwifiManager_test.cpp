@@ -3,46 +3,75 @@
 // Date .........: 20-02-2026 17.54.06
 //
 
-
-
 #include <Arduino.h>
-
-// #define LOG_MODULE_LEVEL LOG_MODULE_INFO
 #include "lnLogger_Class.h"
-
-// --- Project
-#define  __I_AM_MAIN_CPP__
 #include "lnWiFiManager.h"
 
-
-// --- CREDENTIALS
+#define  __I_AM_MAIN_CPP__
 #include <ssid_credentials_esp32.h>
 
-//
 lnWiFiManagerNB wifiManager;
+
+// Variabili di stato
+bool canUseNetwork = false;
+uint32_t lastRetryTime = 0;
+const uint32_t retryInterval = 30000; // 30 secondi tra i tentativi di scansione se disconnesso
+
+// --- CALLBACK: Qui gestiamo gli eventi di rete
+void onConnectionChanged(bool connected) {
+    canUseNetwork = connected;
+
+    if (connected) {
+        lnLOG_NOTIFY("SISTEMA: Rete ripristinata. Avvio servizi...");
+        // Qui puoi chiamare funzioni "una tantum" al momento della connessione:
+        // configTime(gmtOffset_sec, daylightOffset_sec, "pool.ntp.org");
+        // myTelegramBot.sendMessage(CHAT_ID, "Sistema Online!", "");
+    } else {
+        lnLOG_ERROR("SISTEMA: Connessione persa. Servizi in pausa.");
+    }
+}
 
 void setup() {
     Serial.begin(115200);
-    lnLog.init(128, 20);  // line_buffer_len, filename_buffer_len
+    lnLog.init(128, 20);
 
-    // - prima dell'init()
-    for (int8_t i = 0; i < loretoNetworksCount; i++) {
+    // 1. Configurazione WiFi
+    for (int i = 0; i < loretoNetworksCount; i++) {
         wifiManager.addSSID(loretoNetworks[i].ssid, loretoNetworks[i].password);
     }
 
-    wifiManager.init(
-        60,   // scan ogni 60s se connesso
-        30,   // scan ogni 30s se non connesso
-        5*60,  // timeout max 5 minuti (5*60)
-        8        // rssi gap
-    );
+    wifiManager.setConnectionCallback(onConnectionChanged);
+    wifiManager.init(8); // rssiGap di 8dB
+
+    // 2. Lanciamo la prima scansione manuale
+    wifiManager.startScan();
 }
 
 void loop() {
+    // Aggiorna lo stato del WiFi (gestisce i risultati dello scan)
     wifiManager.update();
 
-    // if (wifiManager.isConnected()) {
-    //     Serial.println("Connected to: " + wifiManager.getConnectedSSID());
-    // }
-    delay(100);
+    // --- LOGICA DEI SERVIZI ---
+    if (canUseNetwork) {
+
+        // Esegui Telegram solo se la rete è pronta
+        // myTelegramBot.handleMessages();
+
+        // Esegui Logica NTP ogni ora
+        // if (now - lastNtpUpdate > 3600000) { ... }
+
+    } else {
+
+        // --- LOGICA DI RICONNESSIONE MANUALE ---
+        // Se non siamo connessi, riproviamo a scansionare ogni 30s
+        uint32_t now = millis();
+        if (now - lastRetryTime > retryInterval) {
+            lnLOG_NOTIFY("SISTEMA: Tentativo di riconnessione manuale...");
+            wifiManager.startScan();
+            lastRetryTime = now;
+        }
+    }
+
+    // Altre attività che NON dipendono dal WiFi (es. sensori, LED)
+    // readSensors();
 }
