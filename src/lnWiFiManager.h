@@ -29,6 +29,7 @@ class lnWiFiManagerNB {
         void setScanCallback(ScanCallback cb);
         void setConnectionCallback(ConnectionStatusCallback cb);
         void printScanResults();
+        void disconnect();
 
     private:
         static lnWiFiManagerNB* s_instance;

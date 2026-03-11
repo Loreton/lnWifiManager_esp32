@@ -13,6 +13,7 @@
 lnWiFiManagerNB wifiManager;
 
 // Variabili di stato
+#define BUTTON_PIN 19
 bool canUseNetwork = false;
 uint32_t lastRetryTime = 0;
 const uint32_t retryInterval = 30000; // 30 secondi tra i tentativi di scansione se disconnesso
@@ -31,9 +32,18 @@ void onConnectionChanged(bool connected) {
     }
 }
 
+
+
+// #########################################################
+// #
+// #########################################################
 void setup() {
     Serial.begin(115200);
     lnLog.init(128, 25);
+
+    // Configura il PIN di test
+    pinMode(BUTTON_PIN, INPUT_PULLUP);
+
 
     // 1. Configurazione WiFi
     for (int i = 0; i < loretoNetworksCount; i++) {
@@ -50,6 +60,17 @@ void setup() {
 void loop() {
     // Aggiorna lo stato del WiFi (gestisce i risultati dello scan)
     wifiManager.update();
+
+    // --- TEST DISCONNESSIONE MANUALE ---
+    // Se premi il pulsante (o colleghi il PIN 19 a GND)
+    if (digitalRead(BUTTON_PIN) == LOW) {
+        if (wifiManager.isConnected()) {
+            wifiManager.disconnect();
+            delay(500); // Debounce brutale per il test
+        }
+    }
+
+
 
     // --- LOGICA DEI SERVIZI ---
     if (canUseNetwork) {
@@ -72,6 +93,11 @@ void loop() {
         }
     }
 
+
+
+
+
     // Altre attività che NON dipendono dal WiFi (es. sensori, LED)
     // readSensors();
 }
+

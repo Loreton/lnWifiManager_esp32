@@ -93,42 +93,57 @@ void lnWiFiManagerNB::handleScanResult() {
     }
 }
 
+
+
+/*
+    Perché abbiamo usato s_instance?
+    Questa è una delle domande più classiche quando si lavora con le classi in C++ su sistemi embedded.
+    Il motivo è che WiFi.onEvent (il sistema che gestisce gli eventi dell'ESP32) si aspetta come argomento una funzione "semplice" o statica.
+
+    Una funzione non statica (normale metodo di una classe) ha sempre un parametro "invisibile" chiamato this,
+    che punta all'istanza specifica della classe.
+
+    Il sistema degli eventi dell'ESP32 è globale e non sa quale istanza di lnWiFiManagerNB stai usando.
+    Quindi non può passare il puntatore this.
+
+    La soluzione:
+        Rendiamo il gestore eventi (WiFiEventHandler) statico. Ora il sistema può chiamarlo.
+        Però, essendo statico, il gestore non può vedere le variabili della tua istanza (come m_connCallback).
+        Quindi salviamo l'indirizzo della classe in una variabile statica (s_instance) durante il costruttore.
+        Quando scatta l'evento, il gestore statico "guarda" dentro s_instance per trovare e chiamare la tua callback specifica.
+*/
 void lnWiFiManagerNB::WiFiEventHandler(WiFiEvent_t event, WiFiEventInfo_t info) {
     if (s_instance == nullptr) return;
     const char* eventName;
 
     switch (event) {
-        /*
-        */
-        case ARDUINO_EVENT_WIFI_READY:           eventName = "WIFI_READY"; break;
-        case ARDUINO_EVENT_WIFI_STA_START:       eventName = "STA_START"; break;
-        case ARDUINO_EVENT_WIFI_STA_STOP:        eventName = "STA_STOP"; break;
-        case ARDUINO_EVENT_WIFI_STA_CONNECTED:   eventName = "STA_CONNECTED"; break;
-        case ARDUINO_EVENT_WIFI_STA_LOST_IP:     eventName = "STA_LOST_IP"; break;
-
-        case ARDUINO_EVENT_WIFI_STA_GOT_IP:
-            eventName = "STA_GOT_IP";
-            lnLOG_INFO("%sSTA_GOT_IP: %s", logPrefix, WiFi.localIP().toString().c_str());
-            if (s_instance->m_connCallback) s_instance->m_connCallback(true);
-            break;
-
-        case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-            eventName = "STA_DISCONNECTED";
-            lnLOG_INFO("%sSTA_DISCONNECTED", logPrefix);
-            if (s_instance->m_connCallback) s_instance->m_connCallback(false);
-            break;
-
-        case ARDUINO_EVENT_WIFI_SCAN_DONE:
-            eventName = "SCAN_DONE";
-            lnLOG_INFO("%sSCAN_DONE", logPrefix);
-            if (s_instance->m_scanCallback) s_instance->m_scanCallback(false);
-            break;
-
-        default:
-            eventName = "Unkown event name!";
-            break;
+        case ARDUINO_EVENT_WIFI_READY:            eventName = "WIFI_READY"; break;
+        case ARDUINO_EVENT_WIFI_STA_START:        eventName = "STA_START"; break;
+        case ARDUINO_EVENT_WIFI_STA_STOP:         eventName = "STA_STOP"; break;
+        case ARDUINO_EVENT_WIFI_STA_CONNECTED:    eventName = "STA_CONNECTED"; break;
+        case ARDUINO_EVENT_WIFI_STA_LOST_IP:      eventName = "STA_LOST_IP"; break;
+        case ARDUINO_EVENT_WIFI_STA_GOT_IP:       eventName = "STA_GOT_IP"; break;
+        case ARDUINO_EVENT_WIFI_STA_DISCONNECTED: eventName = "STA_DISCONNECTED"; break;
+        case ARDUINO_EVENT_WIFI_SCAN_DONE:        eventName = "SCAN_DONE"; break
+        default:                                  eventName = "Unkown event name!"; break;
     }
+
+
     lnLOG_NOTIFY("%sWiFi Event: %s (%d)", logPrefix, eventName, (int)event);
+
+    if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
+        lnLOG_INFO("%sGOT_IP: %s", logPrefix, WiFi.localIP().toString().c_str());
+        if (s_instance->m_connCallback) s_instance->m_connCallback(true);
+    }
+
+    else if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
+        if (s_instance->m_connCallback) s_instance->m_connCallback(false);
+    }
+
+    else if (event == ARDUINO_EVENT_WIFI_SCAN_DONE) {
+        if (s_instance->m_scanCallback) s_instance->m_scanCallback(false);
+    }
+
 
 }
 
@@ -143,6 +158,20 @@ void lnWiFiManagerNB::printScanResults() {
         lnLOG_DEBUG("  %s %-20s RSSI: %d", saved ? "[*]" : "[ ]", WiFi.SSID(i).c_str(), WiFi.RSSI(i));
     }
 }
+
+
+
+// #########################################
+// # ....
+// #########################################
+void lnWiFiManagerNB::disconnect() {
+    lnLOG_WARNING("%sForcing manual disconnect...", logPrefix);
+    // true: spegne il modulo radio e cancella le credenziali temporanee
+    // false: non cancella le credenziali dalla NVS (se presenti)
+    WiFi.disconnect(true);
+    delay(100);
+}
+
 
 bool lnWiFiManagerNB::isConnected() { return WiFi.status() == WL_CONNECTED; }
 const char* lnWiFiManagerNB::getConnectedSSID() { return m_currentSSID; }
