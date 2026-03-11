@@ -11,7 +11,7 @@ lnWiFiManagerNB* lnWiFiManagerNB::s_instance = nullptr;
 
 lnWiFiManagerNB::lnWiFiManagerNB() {
     s_instance = this;
-    m_credentialsCount = 0;
+    // m_credentialsCount = 0;
 }
 
 void lnWiFiManagerNB::init(int8_t rssiGap) {
@@ -21,6 +21,20 @@ void lnWiFiManagerNB::init(int8_t rssiGap) {
     WiFi.disconnect(true);
     WiFi.onEvent(WiFiEventHandler);
 }
+
+
+// #########################################
+// # ....
+// #########################################
+void lnWiFiManagerNB::disconnect() {
+    lnLOG_WARNING("%sForcing manual disconnect...", logPrefix);
+    // true: spegne il modulo radio e cancella le credenziali temporanee
+    // false: non cancella le credenziali dalla NVS (se presenti)
+    WiFi.disconnect(true);
+    delay(100);
+}
+
+
 
 void lnWiFiManagerNB::setScanCallback(ScanCallback cb) {
     m_scanCallback = cb;
@@ -140,6 +154,22 @@ void lnWiFiManagerNB::WiFiEventHandler(WiFiEvent_t event, WiFiEventInfo_t info) 
     }
 
     else if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
+        uint8_t reason = info.wifi_sta_disconnected.reason;
+        const char* reasonStr;
+
+        // Alcuni codici comuni (rif: Espressif esp_wifi_types.h)
+        switch(reason) {
+            case 1:  reasonStr = "UNSPECIFIED"; break;
+            case 2:  reasonStr = "AUTH_EXPIRE"; break;
+            case 3:  reasonStr = "AUTH_LEAVE (Manual Disconnect)"; break; // Hai chiamato disconnect() manualmente.
+            case 8:  reasonStr = "ASSOC_LEAVE"; break;
+            case 15: reasonStr = "4WAY_HANDSHAKE_TIMEOUT (Wrong Password?)"; break;
+            case 201: reasonStr = "NO_AP_FOUND"; break;
+            case 204: reasonStr = "HANDSHAKE_TIMEOUT (Segnale instabile/debole?)"; break;
+            default: reasonStr = "OTHER"; break;
+        }
+
+        lnLOG_ERROR("%sDisconnected. Reason: %d (%s)", logPrefix, reason, reasonStr);
         if (s_instance->m_connCallback) s_instance->m_connCallback(false);
     }
 
@@ -164,16 +194,6 @@ void lnWiFiManagerNB::printScanResults() {
 
 
 
-// #########################################
-// # ....
-// #########################################
-void lnWiFiManagerNB::disconnect() {
-    lnLOG_WARNING("%sForcing manual disconnect...", logPrefix);
-    // true: spegne il modulo radio e cancella le credenziali temporanee
-    // false: non cancella le credenziali dalla NVS (se presenti)
-    WiFi.disconnect(true);
-    delay(100);
-}
 
 
 bool lnWiFiManagerNB::isConnected() { return WiFi.status() == WL_CONNECTED; }
