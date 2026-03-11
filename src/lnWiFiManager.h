@@ -24,12 +24,16 @@ class lnWiFiManagerNB {
         void addSSID(const char* ssid, const char* password);
         void startScan();
 
-        bool isConnected();
+        // bool isConnected();
+        // Ora isConnected non interroga più il driver WiFi, ma legge il nostro stato "validato"
+        bool isConnected() { return m_isNetworkActive; }
         const char* getConnectedSSID();
         void setScanCallback(ScanCallback cb);
         void setConnectionCallback(ConnectionStatusCallback cb);
         void printScanResults();
         void disconnect();
+
+
 
     private:
         static lnWiFiManagerNB* s_instance;
@@ -49,6 +53,7 @@ class lnWiFiManagerNB {
 
         int8_t   m_rssiGap;
         char     m_currentSSID[MAX_SSID_LENGTH] = {0};
+        bool     m_isNetworkActive = false; // La nostra "Sorgente di Verità"
 
         void handleScanResult();
 };

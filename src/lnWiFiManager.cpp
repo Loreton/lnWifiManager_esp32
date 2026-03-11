@@ -150,7 +150,9 @@ void lnWiFiManagerNB::WiFiEventHandler(WiFiEvent_t event, WiFiEventInfo_t info) 
         lnLOG_INFO("%sGW     %s", logPrefix, WiFi.gatewayIP().toString().c_str());
         lnLOG_INFO("%sDNS    %s", logPrefix, WiFi.dnsIP().toString().c_str());
         lnLOG_INFO("%sRSSI   %d", logPrefix, WiFi.RSSI());
-        if (s_instance->m_connCallback) s_instance->m_connCallback(true);
+        s_instance->m_isNetworkActive = true; // ADESSO SIAMO DAVVERO ONLINE
+        if (s_instance->m_connCallback) s_instance->m_connCallback(s_instance->m_isNetworkActive);
+        // if (s_instance->m_connCallback) s_instance->m_connCallback(true);
     }
 
     else if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
@@ -170,31 +172,65 @@ void lnWiFiManagerNB::WiFiEventHandler(WiFiEvent_t event, WiFiEventInfo_t info) 
         }
 
         lnLOG_ERROR("%sDisconnected. Reason: %d (%s)", logPrefix, reason, reasonStr);
-        if (s_instance->m_connCallback) s_instance->m_connCallback(false);
+        s_instance->m_isNetworkActive = false; // RETE PERDUTA
+        if (s_instance->m_connCallback) s_instance->m_connCallback(s_instance->m_isNetworkActive);
+        // if (s_instance->m_connCallback) s_instance->m_connCallback(false);
+    }
+
+    else if (event == ARDUINO_EVENT_WIFI_STA_LOST_IP) {
+        s_instance->m_isNetworkActive = false;
+        if (s_instance->m_connCallback) s_instance->m_connCallback(s_instance->m_isNetworkActive);
+        // if (s_instance->m_connCallback) s_instance->m_connCallback(false);
     }
 
     else if (event == ARDUINO_EVENT_WIFI_SCAN_DONE) {
-        if (s_instance->m_scanCallback) s_instance->m_scanCallback(false);
+        if (s_instance->m_scanCallback) s_instance->m_scanCallback(false); // scan terminato non siamo più in scan mode
     }
 
-
 }
+
+// void lnWiFiManagerNB::printScanResults() {
+//     int n = WiFi.scanComplete();
+//     lnLOG_DEBUG("%s--- Found %d networks ---", logPrefix, n);
+//     for (int i = 0; i < n; ++i) {
+//         bool saved = false;
+//         for(uint8_t j=0; j<m_credentialsCount; j++) {
+//             if(WiFi.SSID(i) == m_credentials[j].ssid) { saved = true; break; }
+//         }
+//         lnLOG_DEBUG("  %s %-20s RSSI: %d", saved ? "[*]" : "[ ]", WiFi.SSID(i).c_str(), WiFi.RSSI(i));
+//     }
+// }
+
+
 
 void lnWiFiManagerNB::printScanResults() {
     int n = WiFi.scanComplete();
+    if (n < 0) return;
+
     lnLOG_DEBUG("%s--- Found %d networks ---", logPrefix, n);
     for (int i = 0; i < n; ++i) {
         bool saved = false;
-        for(uint8_t j=0; j<m_credentialsCount; j++) {
-            if(WiFi.SSID(i) == m_credentials[j].ssid) { saved = true; break; }
+        // Verifichiamo se l'SSID è tra quelli salvati
+        for(uint8_t j = 0; j < m_credentialsCount; j++) {
+            if(WiFi.SSID(i) == m_credentials[j].ssid) {
+                saved = true;
+                break;
+            }
         }
-        lnLOG_DEBUG("  %s %-20s RSSI: %d", saved ? "[*]" : "[ ]", WiFi.SSID(i).c_str(), WiFi.RSSI(i));
+
+        // Recuperiamo il BSSID (MAC Address dell'AP)
+        String bssid = WiFi.BSSIDstr(i);
+        int rssi = WiFi.RSSI(i);
+        String ssid = WiFi.SSID(i);
+
+        // Stampa formattata: [ ] o [*] | SSID | BSSID | RSSI
+        lnLOG_DEBUG("  %s %-20s [%s] RSSI: %d dBm",
+                    saved ? "[*]" : "[ ]",
+                    ssid.c_str(),
+                    bssid.c_str(),
+                    rssi);
     }
+    lnLOG_DEBUG("%s-----------------------", logPrefix);
 }
 
-
-
-
-
-bool lnWiFiManagerNB::isConnected() { return WiFi.status() == WL_CONNECTED; }
 const char* lnWiFiManagerNB::getConnectedSSID() { return m_currentSSID; }

@@ -60,10 +60,13 @@ void setup() {
 void loop() {
     // Aggiorna lo stato del WiFi (gestisce i risultati dello scan)
     wifiManager.update();
+    // 2. Ottieni lo stato
+    bool isNetReady = wifiManager.isConnected(); // dovrebbe essere lo stesso ritornato con canUseNetwork
+
 
     // --- TEST DISCONNESSIONE MANUALE ---
     // Se premi il pulsante (o colleghi il PIN 19 a GND)
-    if (digitalRead(BUTTON_PIN) == LOW) {
+    if (digitalRead(BUTTON_PIN) == LOW && isNetReady) {
         if (wifiManager.isConnected()) {
             wifiManager.disconnect();
             delay(500); // Debounce brutale per il test
@@ -73,7 +76,7 @@ void loop() {
 
 
     // --- LOGICA DEI SERVIZI ---
-    if (canUseNetwork) {
+    if (isNetReady) {
 
         // Esegui Telegram solo se la rete è pronta
         // myTelegramBot.handleMessages();
