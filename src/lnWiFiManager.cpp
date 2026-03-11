@@ -124,7 +124,7 @@ void lnWiFiManagerNB::WiFiEventHandler(WiFiEvent_t event, WiFiEventInfo_t info) 
         case ARDUINO_EVENT_WIFI_STA_LOST_IP:      eventName = "STA_LOST_IP"; break;
         case ARDUINO_EVENT_WIFI_STA_GOT_IP:       eventName = "STA_GOT_IP"; break;
         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED: eventName = "STA_DISCONNECTED"; break;
-        case ARDUINO_EVENT_WIFI_SCAN_DONE:        eventName = "SCAN_DONE"; break
+        case ARDUINO_EVENT_WIFI_SCAN_DONE:        eventName = "SCAN_DONE"; break;
         default:                                  eventName = "Unkown event name!"; break;
     }
 
@@ -132,7 +132,10 @@ void lnWiFiManagerNB::WiFiEventHandler(WiFiEvent_t event, WiFiEventInfo_t info) 
     lnLOG_NOTIFY("%sWiFi Event: %s (%d)", logPrefix, eventName, (int)event);
 
     if (event == ARDUINO_EVENT_WIFI_STA_GOT_IP) {
-        lnLOG_INFO("%sGOT_IP: %s", logPrefix, WiFi.localIP().toString().c_str());
+        lnLOG_INFO("%sGot IP %s", logPrefix, WiFi.localIP().toString().c_str());
+        lnLOG_INFO("%sGW     %s", logPrefix, WiFi.gatewayIP().toString().c_str());
+        lnLOG_INFO("%sDNS    %s", logPrefix, WiFi.dnsIP().toString().c_str());
+        lnLOG_INFO("%sRSSI   %d", logPrefix, WiFi.RSSI());
         if (s_instance->m_connCallback) s_instance->m_connCallback(true);
     }
 
