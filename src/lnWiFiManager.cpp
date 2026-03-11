@@ -22,8 +22,13 @@ void lnWiFiManagerNB::init(int8_t rssiGap) {
     WiFi.onEvent(WiFiEventHandler);
 }
 
-void lnWiFiManagerNB::setScanCallback(ScanCallback cb) { m_scanCallback = cb; }
-void lnWiFiManagerNB::setConnectionCallback(ConnectionStatusCallback cb) { m_connCallback = cb; }
+void lnWiFiManagerNB::setScanCallback(ScanCallback cb) {
+    m_scanCallback = cb;
+}
+
+void lnWiFiManagerNB::setConnectionCallback(ConnectionStatusCallback cb) {
+    m_connCallback = cb;
+}
 
 void lnWiFiManagerNB::addSSID(const char* ssid, const char* password) {
     if (m_credentialsCount < MAX_STORED_NETWORKS) {
@@ -90,20 +95,41 @@ void lnWiFiManagerNB::handleScanResult() {
 
 void lnWiFiManagerNB::WiFiEventHandler(WiFiEvent_t event, WiFiEventInfo_t info) {
     if (s_instance == nullptr) return;
+    const char* eventName;
 
     switch (event) {
+        /*
+        */
+        case ARDUINO_EVENT_WIFI_READY:           eventName = "WIFI_READY"; break;
+        case ARDUINO_EVENT_WIFI_STA_START:       eventName = "STA_START"; break;
+        case ARDUINO_EVENT_WIFI_STA_STOP:        eventName = "STA_STOP"; break;
+        case ARDUINO_EVENT_WIFI_STA_CONNECTED:   eventName = "STA_CONNECTED"; break;
+        case ARDUINO_EVENT_WIFI_STA_LOST_IP:     eventName = "STA_LOST_IP"; break;
+
         case ARDUINO_EVENT_WIFI_STA_GOT_IP:
-            lnLOG_INFO("%sGot IP: %s", logPrefix, WiFi.localIP().toString().c_str());
+            eventName = "STA_GOT_IP";
+            lnLOG_INFO("%sSTA_GOT_IP: %s", logPrefix, WiFi.localIP().toString().c_str());
             if (s_instance->m_connCallback) s_instance->m_connCallback(true);
             break;
+
         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
+            eventName = "STA_DISCONNECTED";
+            lnLOG_INFO("%sSTA_DISCONNECTED", logPrefix);
             if (s_instance->m_connCallback) s_instance->m_connCallback(false);
             break;
+
         case ARDUINO_EVENT_WIFI_SCAN_DONE:
+            eventName = "SCAN_DONE";
+            lnLOG_INFO("%sSCAN_DONE", logPrefix);
             if (s_instance->m_scanCallback) s_instance->m_scanCallback(false);
             break;
-        default: break;
+
+        default:
+            eventName = "Unkown event name!";
+            break;
     }
+    lnLOG_NOTIFY("%sWiFi Event: %s (%d)", logPrefix, eventName, (int)event);
+
 }
 
 void lnWiFiManagerNB::printScanResults() {

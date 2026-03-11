@@ -33,7 +33,7 @@ void onConnectionChanged(bool connected) {
 
 void setup() {
     Serial.begin(115200);
-    lnLog.init(128, 20);
+    lnLog.init(128, 25);
 
     // 1. Configurazione WiFi
     for (int i = 0; i < loretoNetworksCount; i++) {
