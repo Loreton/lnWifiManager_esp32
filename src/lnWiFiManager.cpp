@@ -67,6 +67,7 @@ void lnWiFiManagerNB::update() {
     if (n >= 0) {
         handleScanResult();
         WiFi.scanDelete();
+        lnLOG_DEBUG("%sscan on update completed", logPrefix);
     }
 }
 
@@ -96,6 +97,7 @@ void lnWiFiManagerNB::handleScanResult() {
     }
 
     if (bestIdx != -1) {
+        lnLOG_DEBUG("%sbetter RSSI has been found", logPrefix);
         if (WiFi.status() == WL_CONNECTED) {
             if (strcmp(WiFi.SSID().c_str(), WiFi.SSID(bestIdx).c_str()) == 0) return;
             if ((bestRSSI - WiFi.RSSI()) < m_rssiGap) return;
@@ -104,7 +106,10 @@ void lnWiFiManagerNB::handleScanResult() {
         strncpy(m_currentSSID, WiFi.SSID(bestIdx).c_str(), MAX_SSID_LENGTH - 1);
         lnLOG_INFO("%sConnecting to: %s (%d dBm)", logPrefix, m_currentSSID, bestRSSI);
         WiFi.begin(m_currentSSID, bestPassword);
+        WiFi.setSleep(false); // after WiFi.begin() to keep the radio always on and maintain continuous link.
+    } else {
     }
+
 }
 
 
@@ -164,6 +169,7 @@ void lnWiFiManagerNB::WiFiEventHandler(WiFiEvent_t event, WiFiEventInfo_t info) 
             case 1:  reasonStr = "UNSPECIFIED"; break;
             case 2:  reasonStr = "AUTH_EXPIRE"; break;
             case 3:  reasonStr = "AUTH_LEAVE (Manual Disconnect)"; break; // Hai chiamato disconnect() manualmente.
+            case 7:  reasonStr = "CLASS3_FRAME_FROM_NONASSOC_STA"; break;
             case 8:  reasonStr = "ASSOC_LEAVE"; break;
             case 15: reasonStr = "4WAY_HANDSHAKE_TIMEOUT (Wrong Password?)"; break;
             case 201: reasonStr = "NO_AP_FOUND"; break;
@@ -188,18 +194,6 @@ void lnWiFiManagerNB::WiFiEventHandler(WiFiEvent_t event, WiFiEventInfo_t info) 
     }
 
 }
-
-// void lnWiFiManagerNB::printScanResults() {
-//     int n = WiFi.scanComplete();
-//     lnLOG_DEBUG("%s--- Found %d networks ---", logPrefix, n);
-//     for (int i = 0; i < n; ++i) {
-//         bool saved = false;
-//         for(uint8_t j=0; j<m_credentialsCount; j++) {
-//             if(WiFi.SSID(i) == m_credentials[j].ssid) { saved = true; break; }
-//         }
-//         lnLOG_DEBUG("  %s %-20s RSSI: %d", saved ? "[*]" : "[ ]", WiFi.SSID(i).c_str(), WiFi.RSSI(i));
-//     }
-// }
 
 
 
